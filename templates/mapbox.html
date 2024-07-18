@@ -118,6 +118,18 @@
 
         map.on('mousemove', updateInfo);
         map.on('zoomend', updateInfo);
+
+        // 加载并显示GeoJSON文件
+        fetch('/static//yangtze_river.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: function (feature) {
+                        return {color: 'blue'};
+                    }
+                }).addTo(map);
+            })
+            .catch(error => console.error('Error loading the GeoJSON file:', error));
     </script>
 </body>
 </html>

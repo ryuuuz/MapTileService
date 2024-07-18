@@ -1,12 +1,13 @@
-from flask import Flask, send_from_directory, abort, render_template_string, request, send_file, jsonify
-import os
-import requests
-import socket
-from urllib.parse import quote
-from config import TILE_DIRECTORY, HTML_DIRECTORY, TILE_SIZE, ZOOM_LEVELS, LONGITUDE_RANGE, \
-    LATITUDE_RANGE
-import zipfile
 import io
+import os
+import socket
+import zipfile
+from urllib.parse import quote
+
+import folium
+from flask import Flask, send_from_directory, abort, render_template_string, send_file, render_template
+
+from config import TILE_DIRECTORY, HTML_DIRECTORY, CENTER_LOCATION
 
 app = Flask(__name__)
 app.config['TILE_DIRECTORY'] = TILE_DIRECTORY
@@ -18,54 +19,37 @@ def is_port_in_use(port):
         return s.connect_ex(('localhost', port)) == 0
 
 
-def download_tile(lon, lat, zoom):
-    tile_dir = os.path.join(app.config['TILE_DIRECTORY'], f'{zoom}/{lon}_{lat}')
-    tile_path = os.path.join(tile_dir, 'tile.png')
-
-    if os.path.exists(tile_path):
-        print(f"Tile {tile_path} already exists. Skipping download.")
-        return
-
-    url = f"https://restapi.amap.com/v3/staticmap?location={lon},{lat}&zoom={zoom}&size={TILE_SIZE[0]}*{TILE_SIZE[1]}&key={GAODE_API_KEY}"
-    response = requests.get(url, timeout=3)
-
-    if response.status_code == 200:
-        os.makedirs(tile_dir, exist_ok=True)
-        with open(tile_path, 'wb') as f:
-            f.write(response.content)
-        print(f"Tile {tile_path} downloaded successfully")
-    else:
-        print(f"Failed to download tile at {lon}, {lat}, zoom {zoom}")
-
-
-def download_tiles():
-    lon_min, lon_max = LONGITUDE_RANGE
-    lat_min, lat_max = LATITUDE_RANGE
-
-    lon_step = (lon_max - lon_min) / 5
-    lat_step = (lat_max - lat_min) / 5
-
-    for zoom in ZOOM_LEVELS:
-        lon = lon_min
-        while lon <= lon_max:
-            lat = lat_min
-            while lat <= lat_max:
-                download_tile(lon, lat, zoom)
-                lat += lat_step
-            lon += lon_step
-
-
 @app.route('/')
 def serve_offlinemap():
     return send_file(os.path.join(app.config['HTML_DIRECTORY'], 'offlinemap.html'))
+
 
 @app.route('/map')
 def serve_map():
     return send_file(os.path.join(app.config['HTML_DIRECTORY'], 'map.html'))
 
+
 @app.route('/mapbox')
 def serve_mapbox():
     return send_file(os.path.join(app.config['HTML_DIRECTORY'], 'mapbox.html'))
+
+
+@app.route('/geojson')
+def serve_geojson():
+    # Create a map centered at the specified location
+    map = folium.Map(location=[CENTER_LOCATION[1], CENTER_LOCATION[0]], zoom_start=10)
+    # Load the GeoJSON file
+    geojson_path = 'static/geojson/waterways/520000.geojson'
+    folium.GeoJson(geojson_path).add_to(map)
+    # Save the map to an HTML file
+    map.save('templates/geojson.html')
+
+    return render_template('geojson.html')
+
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
 
 
 @app.route('/tiles/')
