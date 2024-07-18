@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Offline Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // 创建地图对象并设置初始视图（经纬度和缩放级别）
+        var map = L.map('map').setView([28.544375,108.488674], 10);
+
+        // 定义瓦片图层
+        var streetsLayer = L.tileLayer('/tiles/streets-v11/{z}/{x}_{y}.png', {
+            maxZoom: 15,
+            minZoom: 10,
+            tileSize: 256,
+            bounds: [
+                [28, 108],
+                [29, 109]
+            ],
+            noWrap: true,
+            errorTileUrl: 'https://via.placeholder.com/256?text=No+Tile'
+        });
+
+        var satelliteLayer = L.tileLayer('/tiles/satellite-v9/{z}/{x}_{y}.png', {
+            maxZoom: 15,
+            minZoom: 10,
+            tileSize: 256,
+            bounds: [
+                [28, 108],
+                [29, 109]
+            ],
+            noWrap: true,
+            errorTileUrl: 'https://via.placeholder.com/256?text=No+Tile'
+        });
+
+        // 添加初始图层到地图
+        streetsLayer.addTo(map);
+
+        // 添加图层控制
+        var baseLayers = {
+            "Streets": streetsLayer,
+            "Satellite": satelliteLayer
+        };
+
+        L.control.layers(baseLayers).addTo(map);
+    </script>
+</body>
+</html>
