@@ -3,7 +3,7 @@ import os
 import requests
 import socket
 from urllib.parse import quote
-from config import GAODE_API_KEY, TILE_DIRECTORY, HTML_DIRECTORY, TILE_SIZE, ZOOM_LEVELS, LONGITUDE_RANGE, \
+from config import TILE_DIRECTORY, HTML_DIRECTORY, TILE_SIZE, ZOOM_LEVELS, LONGITUDE_RANGE, \
     LATITUDE_RANGE
 import zipfile
 import io
