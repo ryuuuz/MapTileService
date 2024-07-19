@@ -1,6 +1,6 @@
 # config.py
 
-mapbox_access_token = 'this is a token'
+MAPBOX_TOKEN = 'this is a token'
 TILE_DIRECTORY = 'tiles'
 HTML_DIRECTORY = 'templates'
 ZOOM_LEVELS = [10, 11, 12, 13, 14, 15]

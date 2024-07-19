@@ -1,5 +1,5 @@
 flask~=3.0.3
 requests~=2.32.3
-pillow~=9.4.0
+pillow~=10.4.0
 folium~=0.14.0
 shapely~=2.0.1

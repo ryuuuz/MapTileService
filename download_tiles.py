@@ -17,7 +17,7 @@ layer_url = {
 
 # 读取 GeoJSON 文件
 def load_geojson(filepath):
-    with open(filepath) as f:
+    with open(filepath, encoding='utf-8') as f:
         geojson = json.load(f)
     return geojson
 
