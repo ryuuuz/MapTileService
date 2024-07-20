@@ -71,21 +71,21 @@ def is_tile_near_waterway(tile_poly, buffered_geojson):
 def deg2num(lat_deg, lon_deg, zoom):
     lat_rad = math.radians(lat_deg)
     n = 2.0 ** zoom
-    xtile = int((lon_deg + 180.0) / 360.0 * n)
-    ytile = int((1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
-    return (xtile, ytile)
+    x_tile = int((lon_deg + 180.0) / 360.0 * n)
+    y_tile = int((1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
+    return x_tile, y_tile
 
 
 # 瓦片编号转换为经纬度
-def num2deg(xtile, ytile, zoom):
+def num2deg(x_tile, y_tile, zoom):
     n = 2 ** zoom
-    lon_deg = xtile / n * 360.0 - 180.0
-    lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
+    lon_deg = x_tile / n * 360.0 - 180.0
+    lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * y_tile / n)))
     lat_deg = math.degrees(lat_rad)
 
     # 返回四个角的经纬度构成的矩形
     tile_poly = box(lon_deg, lat_deg, lon_deg + 360.0 / n,
-                    lat_deg + (180.0 / math.pi * math.atan(math.sinh(math.pi * (1 - 2 * (ytile + 1) / n)))))
+                    lat_deg + (180.0 / math.pi * math.atan(math.sinh(math.pi * (1 - 2 * (y_tile + 1) / n)))))
     return tile_poly
 
 
