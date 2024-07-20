@@ -52,11 +52,11 @@ def list_tiles():
     files = []
     for root, _, filenames in os.walk(app.config['TILE_DIRECTORY']):
         for filename in filenames:
-            file_path = str(app.config['TILE_DIRECTORY'])
+            file_path = str(os.path.join(root, filename))
             arc_name = os.path.relpath(file_path, app.config['TILE_DIRECTORY'])
             files.append(arc_name)
     file_links = [f'<a href="/tiles/{quote(file)}">{file}</a>' for file in files]
-    return render_template_string('tiles.html', files=''.join(file_links))
+    return render_template('tiles.html', files=''.join(file_links))
 
 
 @app.route('/tiles/<path:filename>')
@@ -73,7 +73,7 @@ def download_tiles_as_zip():
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for root, _, files in os.walk(app.config['TILE_DIRECTORY']):
             for file in files:
-                file_path = str(app.config['TILE_DIRECTORY'])
+                file_path = str(os.path.join(root, file))
                 arc_name = os.path.relpath(file_path, app.config['TILE_DIRECTORY'])
                 zip_file.write(file_path, arc_name)
     zip_buffer.seek(0)
@@ -90,5 +90,4 @@ if __name__ == '__main__':
     if is_port_in_use(port):
         print(f"Port {port} is already in use.")
     else:
-        # download_tiles()  # 下载瓦片
         app.run(port=port)
