@@ -4,14 +4,16 @@ import os
 
 import requests
 from PIL import Image
-from shapely.geometry import box, shape, mapping
+from shapely.geometry import box, shape
 
-from config import MAPBOX_TOKEN, TILE_DIRECTORY, ZOOM_LEVELS, LONGITUDE_RANGE, LATITUDE_RANGE, BUFFER_DISTANCE
+from config import MAPBOX_TOKEN, TIANDI_TOKEN, TILE_DIRECTORY, ZOOM_LEVELS, LONGITUDE_RANGE, LATITUDE_RANGE
 
 layer_url = {
-    'streets-v11': 'https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token={token}',
-    'satellite-v9': 'https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token={token}',
-    'google-satellite': 'https://khms2.google.com/kh/v=982?x={x}&y={y}&z={z}'
+    'streets-v11': 'https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token={mapbox_token}',
+    'satellite-v9': 'https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token={mapbox_token}',
+    'google-satellite': 'https://khms2.google.com/kh/v=982?x={x}&y={y}&z={z}',
+    'tianditu_vec': 'https://t4.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk={tiandi_token}',
+    'tianditu_cva': 'https://t4.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk={tiandi_token}',
 }
 
 
@@ -39,34 +41,6 @@ def filter_geojson_by_bbox(geojson, min_lng, min_lat, max_lng, max_lat):
     return filtered_geojson
 
 
-# 获取 GeoJSON 数据的缓冲区（buffer）范围
-def get_buffered_geojson(geojson, buffer_distance):
-    buffered_features = []
-
-    for feature in geojson['features']:
-        geom = shape(feature['geometry'])
-        buffered_geom = geom.buffer(buffer_distance)
-        buffered_features.append({
-            "type": "Feature",
-            "geometry": mapping(buffered_geom)
-        })
-
-    buffered_geojson = {
-        "type": "FeatureCollection",
-        "features": buffered_features
-    }
-    return buffered_geojson
-
-
-# 检查瓦片是否在缓冲区内
-def is_tile_near_waterway(tile_poly, buffered_geojson):
-    for feature in buffered_geojson['features']:
-        geom = shape(feature['geometry'])
-        if tile_poly.intersects(geom):
-            return True
-    return False
-
-
 # 经纬度转换为瓦片编号
 def deg2num(lat_deg, lon_deg, zoom):
     lat_rad = math.radians(lat_deg)
@@ -89,14 +63,36 @@ def num2deg(x_tile, y_tile, zoom):
     return tile_poly
 
 
+def is_tile_contain_waterway(tile_poly, geojson):
+    for feature in geojson['features']:
+        geom = shape(feature['geometry'])
+        # 检查水域几何是否至少有一个点在瓦片内
+        if tile_poly.intersects(geom):
+            return True
+    return False
+
+
+def expand_tiles(x, y, expansion_range):
+    expanded_tiles = []
+    for dx in range(-expansion_range, expansion_range + 1):
+        for dy in range(-expansion_range, expansion_range + 1):
+            expanded_tiles.append((x + dx, y + dy))
+    return expanded_tiles
+
+
+def tile_exists(zoom, x, y, layer):
+    file_path = os.path.join(TILE_DIRECTORY, f'{layer}/{zoom}', f'{x}_{y}.png')
+    return os.path.exists(file_path)
+
+
 def download_tile(zoom, x, y, layer):
-    # url = f'https://api.mapbox.com/styles/v1/mapbox/{layer}/tiles/{zoom}/{x}/{y}?access_token={mapbox_access_token}'
-    url = layer_url[layer].format(z=zoom, x=x, y=y, token=MAPBOX_TOKEN)
-    response = requests.get(url, stream=True)
+    url = layer_url[layer].format(z=zoom, x=x, y=y, mapbox_token=MAPBOX_TOKEN, tiandi_token=TIANDI_TOKEN)
+    response = requests.get(url, stream=True, timeout=1)
     if response.status_code == 200:
         return Image.open(response.raw)
     else:
         print(f'Failed to download tile {zoom}/{x}/{y} from layer {layer}')
+        print(response.text)
         return None
 
 
@@ -109,18 +105,12 @@ def save_tile(image, zoom, x, y, layer):
     print(f'Saved {file_path}')
 
 
-def tile_exists(zoom, x, y, layer):
-    file_path = os.path.join(TILE_DIRECTORY, f'{layer}/{zoom}', f'{x}_{y}.png')
-    return os.path.exists(file_path)
-
-
 def download_tiles(layer):
     geojson = load_geojson('static/geojson/waterways/520000.geojson')
 
     min_lng, min_lat = LONGITUDE_RANGE[0], LATITUDE_RANGE[0]
     max_lng, max_lat = LONGITUDE_RANGE[1], LATITUDE_RANGE[1]
     filtered_geojson = filter_geojson_by_bbox(geojson, min_lng, min_lat, max_lng, max_lat)
-    buffered_geojson = get_buffered_geojson(filtered_geojson, BUFFER_DISTANCE)
 
     for zoom in ZOOM_LEVELS:
         min_x, min_y = deg2num(max_lat, min_lng, zoom)
@@ -128,14 +118,19 @@ def download_tiles(layer):
         for x in range(min_x, max_x + 1):
             for y in range(min_y, max_y + 1):
                 tile_poly = num2deg(x, y, zoom)
-                if is_tile_near_waterway(tile_poly, buffered_geojson):
-                    if not tile_exists(zoom, x, y, layer):
-                        tile = download_tile(zoom, x, y, layer)
-                        if tile:
-                            save_tile(tile, zoom, x, y, layer)
-                    else:
-                        print(f'Tile {zoom}/{x}/{y} from layer {layer} already exists. Skipping download.')
+                if is_tile_contain_waterway(tile_poly, filtered_geojson):
+                    expanded_tiles = expand_tiles(x, y, 1)  # 可以调整扩张范围
+                    for ex, ey in expanded_tiles:
+                        if not tile_exists(zoom, ex, ey, layer):
+                            tile = download_tile(zoom, ex, ey, layer)
+                            if tile:
+                                save_tile(tile, zoom, ex, ey, layer)
+                        else:
+                            print(f'Tile {zoom}/{ex}/{ey} from layer {layer} already exists. Skipping download.')
 
 
 if __name__ == '__main__':
     download_tiles('google-satellite')
+    download_tiles('tianditu_vec')
+    download_tiles('tianditu_cva')
+

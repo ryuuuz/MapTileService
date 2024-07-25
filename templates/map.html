@@ -49,24 +49,10 @@
         var streetsLayer = L.tileLayer('/tiles/streets-v11/{z}/{x}_{y}.png', Object.assign({}, commonLayerConfig));
         var satelliteLayer = L.tileLayer('/tiles/satellite-v9/{z}/{x}_{y}.png', Object.assign({}, commonLayerConfig));
         var google_satelliteLayer = L.tileLayer('/tiles/google-satellite/{z}/{x}_{y}.png', Object.assign({}, commonLayerConfig));
+        var tiandi_cvaLayer = L.tileLayer('/tiles/tianditu_cva/{z}/{x}_{y}.png', Object.assign({}, commonLayerConfig));
+        var tiandi_vecLayer = L.tileLayer('/tiles/tianditu_vec/{z}/{x}_{y}.png', Object.assign({}, commonLayerConfig));
 
         // 创建 Mapbox 图层
-        var mapboxStreetsLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxAccessToken}`, {
-            maxZoom: 16,
-            minZoom: 10,
-            tileSize: 256,
-            noWrap: true,
-            errorTileUrl: 'https://via.placeholder.com/256?text=No+Tile'
-        });
-
-        var mapboxOutdoorsLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/{z}/{x}/{y}?access_token=${mapboxAccessToken}`, {
-            maxZoom: 16,
-            minZoom: 10,
-            tileSize: 256,
-            noWrap: true,
-            errorTileUrl: 'https://via.placeholder.com/256?text=No+Tile'
-        });
-
         var mapboxWujiangLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/rooychou/clyq3w65m03to01r19v573fgy/tiles/{z}/{x}/{y}?access_token=${mapboxAccessToken}`, {
             maxZoom: 16,
             minZoom: 10,
@@ -75,7 +61,7 @@
             errorTileUrl: 'https://via.placeholder.com/256?text=No+Tile'
         });
 
-        var AmapLayer = L.tileLayer(`https://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&style=7`, {
+        var AmapOldLayer = L.tileLayer(`https://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&style=7`, {
             maxZoom: 17,
             minZoom: 1,
             tileSize: 256,
@@ -83,23 +69,7 @@
             errorTileUrl: 'https://via.placeholder.com/256?text=No+Tile'
         });
 
-        var AmapLayer1 = L.tileLayer(`https://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7`, {
-            maxZoom: 17,
-            minZoom: 1,
-            tileSize: 256,
-            noWrap: true,
-            errorTileUrl: 'https://via.placeholder.com/256?text=No+Tile'
-        });
-
-        var mapworldcvaLayer = L.tileLayer(`https://t4.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=68d166cfe304fa077ff035bed00edc37`, {
-            maxZoom: 17,
-            minZoom: 1,
-            tileSize: 256,
-            noWrap: true,
-            errorTileUrl: 'https://via.placeholder.com/256?text=No+Tile'
-        });
-
-        var mapworldvecLayer = L.tileLayer(`https://t4.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=68d166cfe304fa077ff035bed00edc37`, {
+        var AmapNewLayer = L.tileLayer(`https://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7`, {
             maxZoom: 17,
             minZoom: 1,
             tileSize: 256,
@@ -108,21 +78,17 @@
         });
 
         // 添加初始图层到地图
-        streetsLayer.addTo(map);
+        var tiandi_combinedLayer = L.layerGroup([tiandi_vecLayer, tiandi_cvaLayer]);
+        var google_satellite_combinedLayer = L.layerGroup([google_satelliteLayer, tiandi_cvaLayer]);
+        tiandi_combinedLayer.addTo(map);
 
         // 添加图层控制
         var baseLayers = {
-            "Local Streets": streetsLayer,
-            "Local Satellite": satelliteLayer,
-            "Local Google Satellite": google_satelliteLayer,
-            "Mapbox Streets": mapboxStreetsLayer,
-            "Mapbox Outdoors": mapboxOutdoorsLayer,
+            "天地图": tiandi_combinedLayer,
+            "Google Satellite": google_satellite_combinedLayer,
             "Mapbox Wujiang": mapboxWujiangLayer,
-            "Amap": AmapLayer,
-            "Amap1": AmapLayer1,
-            "天地图1": mapworldcvaLayer,
-            "天地图2": mapworldvecLayer,
-
+            "高德地图 旧": AmapOldLayer,
+            "高德地图 新": AmapNewLayer,
         };
 
         L.control.layers(baseLayers).addTo(map);
@@ -156,17 +122,6 @@
         map.on('mousemove', updateInfo);
         map.on('zoomend', updateInfo);
 
-        // 加载并显示GeoJSON文件
-        fetch('/static//yangtze_river.geojson')
-            .then(response => response.json())
-            .then(data => {
-                L.geoJSON(data, {
-                    style: function (feature) {
-                        return {color: 'blue'};
-                    }
-                }).addTo(map);
-            })
-            .catch(error => console.error('Error loading the GeoJSON file:', error));
     </script>
 </body>
 </html>
